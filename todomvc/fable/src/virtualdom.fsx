@@ -279,7 +279,7 @@ let todoHeader model handler =
                     property "value" model
                     onKeydown (fun x ->
                         if x.keyCode = 13
-                        then handler (AddItem {Name = model; Id = 0; Done = false; IsEditing = false})
+                        then handler (AddItem {Name = x?target?value :?> string; Id = 0; Done = false; IsEditing = false})
                         )
                     onKeyup (fun x -> handler (ChangeInput (x?target?value :?> string))) ]]
 
@@ -311,30 +311,38 @@ let itemList handler items activeFilter =
     ul [attribute "class" "todo-list" ]
        (items |> List.filter filterItems |> List.map (listItem handler))
 
-let todoMain model handler =
-    let items = model.Items
-    let allChecked = items |> List.exists (fun i -> not i.Done)
-    section [  attribute "class" "main"
-               Style [ "style", "block" ] ]
-            [   input [ property "id" "toggle-all"
-                        attribute "class" "toggle-all"
-                        property "type" "checkbox"
-                        property "checked" (if not allChecked then "true" else "")
-                        onMouseClick (fun e ->
-                                    if allChecked
-                                    then handler CheckAll
-                                    else handler UnCheckAll) ]
-                label [ attribute "for" "toggle-all" ]
-                      [ text "Mark all as complete" ]
-                (itemList handler items model.Filter) ]
+let todoMain =
+    // let items = model.Items
+    // let allChecked = items |> List.exists (fun i -> not i.Done)
+    let allChecked = false
+    let inputEl =
+        input [
+            property "id" "toggle-all"
+            attribute "class" "toggle-all"
+            property "type" "checkbox"
+            property "checked" (if not allChecked then "true" else "")
+            // onMouseClick (fun e -> if allChecked then handler CheckAll else handler UnCheckAll)
+        ]
+    let labelEl = label [ attribute "for" "toggle-all" ] [ text "Mark all as complete" ]
+    fun itemEls ->
+        section [ 
+            attribute "class" "main"
+            Style [ "style", "block" ]
+        ] [inputEl; labelEl; ul [attribute "class" "todo-list"] itemEls]
 
-let todoView handler model =
-    section
-        [attribute "class" "todoapp"]
-        ((todoHeader model.Input handler)::(if model.Items |> List.isEmpty
-                then []
-                else [  (todoMain model handler)
-                        (todoFooter model handler) ] ))
+let todoView =
+    let mutable items = []
+    fun handler model msg ->
+        let header = todoHeader model.Input handler
+        let footer = todoFooter model handler
+        let main =
+            match msg with
+            | Some(AddItem todo) ->
+                items <- (listItem handler todo)::items
+                items
+            | _ -> items
+            |> todoMain
+        section [attribute "class" "todoapp"] [header; main; footer]
 
 (**
 This view is more complex than the first example, but it also show how easy it is
